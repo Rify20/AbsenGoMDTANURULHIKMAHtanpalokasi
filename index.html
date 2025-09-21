@@ -488,6 +488,95 @@ function closePrivacy(){ document.getElementById('privacyModal').style.display='
 async function sha256(str){ const enc=new TextEncoder().encode(str); const buf=await crypto.subtle.digest('SHA-256',enc); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('') }
 function blobToDataURL(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob) }) }
 function dataURLtoBlob(dataurl){ const arr=dataurl.split(','), mime=arr[0].match(/:(.*?);/)[1]; const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--){ u8[n]=bstr.charCodeAt(n) } return new Blob([u8], {type:mime}); }
+
+/* ===== Print (dengan KOP surat + tunggu gambar) ===== */
+async function printRekap(){
+  if(!guruAktif) return showPopup('Silakan login dulu');
+  const bulanVal=document.getElementById('bulanSelect').value; if(bulanVal==='') return showPopup('Pilih bulan dulu');
+  const tahun=new Date().getFullYear(), monthIdx=Number(bulanVal);
+  const rows=await idbGetMonth(guruAktif, monthIdx, tahun);
+  if(rows.length===0) return showPopup('Tidak ada data untuk dicetak pada bulan ini.');
+
+  // Susun per tanggal
+  const byDate={};
+  rows.forEach(r=>{
+    if(!byDate[r.isoDate]) byDate[r.isoDate]={dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
+    if(r.jenis==='Datang') byDate[r.isoDate].datang={jam:r.jam,foto:r.foto};
+    if(r.jenis==='Pulang') byDate[r.isoDate].pulang={jam:r.jam,foto:r.foto};
+  });
+
+  // Sumber logo untuk kop: pakai yang tampil sekarang
+  const logoEl=document.getElementById('logoImg');
+  const logoSrc = (logoEl && logoEl.src) ? logoEl.src : './assets/asset-yayasan-nurul-hikmah.png';
+
+  const w=window.open('','_blank','width=900,height=700');
+
+  const style=`
+    <style>
+      @page { size: A4; margin: 16mm; }
+      body{font-family:Arial, sans-serif; color:#000; background:#fff; margin:0;}
+      .kop{display:flex; align-items:center; gap:14px; margin-bottom:8px;}
+      .kop-logo{width:72px; height:72px; object-fit:contain; background:#fff; border-radius:12px; padding:6px; border:1px solid #ddd;}
+      .kop-text{line-height:1.2}
+      .kop-title{font-size:18px; font-weight:700; letter-spacing:.4px}
+      .kop-sub{font-size:14px; font-weight:600}
+      .kop-meta{font-size:12px; color:#333}
+      .kop-line{border:0; height:2px; background:#000; margin:8px 0 14px 0}
+      h2{margin:0 0 10px 0; font-size:16px}
+      table{border-collapse:collapse;width:100%}
+      th,td{border:1px solid #444;padding:6px;font-size:13px;text-align:center}
+      th{background:#eee}
+      img{border-radius:6px}
+      .footnote{margin-top:10px; font-size:11px; color:#444}
+    </style>`;
+
+  const kop = `
+    <div class="kop">
+      <img src="${logoSrc}" class="kop-logo" alt="Logo">
+      <div class="kop-text">
+        <div class="kop-title">YAYASAN NURUL HIKMAH</div>
+        <div class="kop-sub">MDTA NURUL HIKMAH</div>
+        <div class="kop-meta">JLN.TUGU-LELEA BLOK D/LIYEP RT.13 RW.07 • Telp: (+62 812-2243-540)</div>
+      </div>
+    </div>
+    <div class="kop-line"></div>
+    <h2>Rekap Absensi Guru ${guruAktif} — ${bulanNama[monthIdx]} ${tahun}</h2>
+  `;
+
+  // Buat tabel, konversi foto -> DataURL agar stabil di iOS/Android
+  let table=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Datang</th><th>Foto Datang</th><th>Pulang</th><th>Foto Pulang</th></tr></thead><tbody>`;
+  for(const d of Object.keys(byDate).sort()){
+    const row=byDate[d];
+    const datangJam=row.datang?row.datang.jam:'-';
+    const pulangJam=row.pulang?row.pulang.jam:'-';
+
+    let datangImg='-';
+    if(row.datang){
+      const dataUrl=await blobToDataURL(row.datang.foto);
+      datangImg=`<img src="${dataUrl}" width="60">`;
+    }
+    let pulangImg='-';
+    if(row.pulang){
+      const dataUrl=await blobToDataURL(row.pulang.foto);
+      pulangImg=`<img src="${dataUrl}" width="60">`;
+    }
+
+    table+=`<tr><td>${row.dayName}</td><td>${row.displayDate}</td><td>${datangJam}</td><td>${datangImg}</td><td>${pulangJam}</td><td>${pulangImg}</td></tr>`;
+  }
+  table+=`</tbody></table>
+          <div class="footnote">Dicetak: ${new Date().toLocaleString('id-ID')}</div>`;
+
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rekap ${guruAktif}</title>${style}</head><body>${kop}${table}</body></html>`);
+  w.document.close();
+  w.focus();
+
+  // Tunggu semua gambar (logo + foto) selesai dimuat agar tidak "hilang" saat print di HP
+  const waitImages = () => Promise.all(Array.from(w.document.images).map(img => (
+    img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = res; })
+  )));
+  try { await waitImages(); } catch(_) {}
+  setTimeout(()=> w.print(), 200);
+}
 </script>
 
 <!-- PRIVACY -->
