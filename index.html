@@ -23,23 +23,20 @@ button:disabled{background:#666; cursor:not-allowed}
 #btnPrint{background:linear-gradient(45deg,#FF9800,#FB8C00)}
 #logoutBtn{background:linear-gradient(45deg,#ef5350,#e53935)}
 #camera{width:100%; border-radius:12px; margin:12px 0; max-height:320px; object-fit:cover; border:3px solid var(--accent)}
-.keterangan{font-size:13px; text-align:left; margin-top:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px}
-.keterangan span{display:block; margin:4px 0}
 #rekap{margin-top:14px}
 table{width:100%; border-collapse:collapse; margin-top:10px; background:rgba(255,255,255,0.03)}
 th, td{padding:8px; border:1px solid rgba(255,255,255,0.06); font-size:13px; text-align:center; color:var(--txt)}
-th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
-.stats{margin-top:10px; font-weight:700; color:var(--accent)}
+th{background:rgba(255,255,255,0.02); color:#A5D6A7; font-weight:700}
+.stats{margin-top:10px; font-weight:700; color:#A5D6A7}
 .header-row{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:8px}
 .small{font-size:12px; opacity:.85}
 .row-actions{display:flex; gap:8px; flex-wrap:wrap}
-.popup{
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
-  align-items:center; justify-content:center; z-index:9999; /* penting */
-}
+.popup{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999 }
 .popup .box{background:#fff; color:#222; padding:18px; border-radius:12px; width:90%; max-width:360px; text-align:center}
 .popup button{margin-top:12px; padding:8px 18px; border-radius:8px; background:#2E7D32; color:#fff; border:none}
-/* label-style button */
+#status{ margin:6px 0 0 0; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-size:13px }
+.toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%) translateY(16px); background:#222; color:#fff; padding:10px 14px; border-radius:10px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:10000; font-size:14px }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0) }
 .button-like{display:inline-block; padding:10px 12px; border-radius:10px; background:linear-gradient(45deg,#90caf9,#42a5f5); color:#fff; font-weight:700; cursor:pointer; margin-top:10px; text-align:center}
 .button-like.disabled{background:#666; cursor:not-allowed}
 </style>
@@ -58,9 +55,7 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
 <div id="absensi" class="card" style="display:none;">
   <div class="header-row">
     <h2 style="margin-bottom:0">Absensi Harian</h2>
-    <div class="row-actions" style="min-width:40%">
-      <button id="logoutBtn" onclick="logout()">Logout</button>
-    </div>
+    <div class="row-actions" style="min-width:40%"><button id="logoutBtn" onclick="logout()">Logout</button></div>
   </div>
   <div class="small" id="guruInfo"></div>
 
@@ -91,51 +86,126 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
     <button id="btnPrivacy" onclick="openPrivacy()">Kebijakan Privasi</button>
   </div>
 
+  <p id="status" class="small"></p>
+
   <div id="rekap"></div>
   <div class="stats" id="stats"></div>
 </div>
 
-<!-- Popup -->
+<!-- POPUP -->
 <div id="popup" class="popup"><div class="box"><p id="popup-message"></p><button onclick="closePopup()">OK</button></div></div>
 
 <script>
-/* ---------- data & konstanta ---------- */
+/* ===== KONSTANTA & STATE ===== */
 const guruAkun = [{username:"guru1", password:"123"}, {username:"guru2", password:"456"}];
 let guruAktif = null;
 const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const hariNama = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+const MIGRATED_KEY = 'idb_migrated_v1';
 
-/* ---------- IndexedDB ---------- */
+/* ===== IndexedDB ===== */
 const DB_NAME='absensiDB', DB_VER=1, STORE='rekap'; let db=null;
-function openDB(){ return new Promise((resolve,reject)=>{ const req=indexedDB.open(DB_NAME,DB_VER);
-  req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE)){ const st=db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true}); st.createIndex('byGuruMonthYear','guru_month_year',{unique:false}); st.createIndex('byGuruDateType','guru_iso_jenis',{unique:false}); } };
-  req.onsuccess=()=>{ db=req.result; resolve(db) }; req.onerror=()=>reject(req.error);
-});}
-function idbAdd(record){ return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE,'readwrite'), st=tx.objectStore(STORE);
-  record.guru_month_year=`${record.guru}|${record.month}|${record.year}`; record.guru_iso_jenis=`${record.guru}|${record.isoDate}|${record.jenis}`;
-  st.add(record); tx.oncomplete=()=>resolve(true); tx.onerror=()=>reject(tx.error);
-});}
-function idbGetMonth(guru, month, year){ return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE,'readonly'), st=tx.objectStore(STORE), idx=st.index('byGuruMonthYear');
-  const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`)); const res=[];
-  req.onsuccess=e=>{ const cur=e.target.result; if(cur){ res.push(cur.value); cur.continue(); } else resolve(res) };
-  req.onerror=()=>reject(req.error);
-});}
-function idbDeleteMonth(guru, month, year){ return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE,'readwrite'), st=tx.objectStore(STORE), idx=st.index('byGuruMonthYear');
-  const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`));
-  req.onsuccess=e=>{ const cur=e.target.result; if(cur){ st.delete(cur.primaryKey); cur.continue(); } else resolve(true) };
-  req.onerror=()=>reject(req.error);
-});}
-async function migrateFromLocalStorage(){ const old=JSON.parse(localStorage.getItem('rekap')||'[]'); if(!old.length) return; for(const r of old){ try{ await idbAdd(r) }catch(_){}} localStorage.removeItem('rekap') }
 
-/* ---------- helper ---------- */
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        const st=db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+        st.createIndex('byGuruMonthYear','guru_month_year',{unique:false});
+        st.createIndex('byGuruDateType','guru_iso_jenis',{unique:false});
+      }
+    };
+    req.onsuccess=()=>{ db=req.result; resolve(db); };
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+function idbAdd(record){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readwrite');
+    const st=tx.objectStore(STORE);
+    record.guru_month_year=`${record.guru}|${record.month}|${record.year}`;
+    record.guru_iso_jenis=`${record.guru}|${record.isoDate}|${record.jenis}`;
+    st.add(record);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
+function idbGetMonth(guru, month, year){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readonly');
+    const st=tx.objectStore(STORE);
+    const idx=st.index('byGuruMonthYear');
+    const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`));
+    const res=[];
+    req.onsuccess=e=>{
+      const cur=e.target.result;
+      if(cur){ res.push(cur.value); cur.continue(); }
+      else resolve(res);
+    };
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+/* Hapus bulan: via index + sweep legacy, resolve saat commit selesai */
+function idbDeleteMonth(guru, month, year){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readwrite');
+    const st=tx.objectStore(STORE);
+
+    // 1) lewat index
+    const idx=st.index('byGuruMonthYear');
+    const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`));
+    req.onsuccess=e=>{
+      const cur=e.target.result;
+      if(cur){ st.delete(cur.primaryKey); cur.continue(); }
+      else{
+        // 2) sweep legacy (month string / dihitung dari isoDate)
+        const sweep=st.openCursor();
+        sweep.onsuccess=ev=>{
+          const c=ev.target.result;
+          if(c){
+            const v=c.value;
+            const mfIso=(v.isoDate && v.isoDate.split('-')[1]) ? (parseInt(v.isoDate.split('-')[1],10)-1) : null;
+            if(v.guru===guru && v.year===year && (v.month===month || mfIso===month)){
+              st.delete(c.primaryKey);
+            }
+            c.continue();
+          }
+        };
+      }
+    };
+    req.onerror=()=>reject(req.error);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
+/* Migrasi localStorage -> IndexedDB hanya sekali */
+async function migrateFromLocalStorageOnce(){
+  if(localStorage.getItem(MIGRATED_KEY)) return;
+  const old = JSON.parse(localStorage.getItem('rekap')||'[]');
+  if(Array.isArray(old) && old.length){
+    for(const r of old){ try{ await idbAdd(r); }catch(_){/* abaikan duplikat */} }
+  }
+  localStorage.removeItem('rekap');
+  localStorage.setItem(MIGRATED_KEY,'1');
+}
+
+/* ===== Helper UI ===== */
 function pad2(n){return String(n).padStart(2,'0')}
 function isoFromDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` }
 function displayDateFromISO(iso){ const [y,m,d]=iso.split('-').map(x=>parseInt(x,10)); return `${d} ${bulanNama[m-1]} ${y}` }
 function dayNameFromISO(iso){ const [y,m,d]=iso.split('-').map(x=>parseInt(x,10)); return hariNama[new Date(y,m-1,d).getDay()] }
 function showPopup(msg){ document.getElementById('popup-message').innerHTML=msg; document.getElementById('popup').style.display='flex' }
 function closePopup(){ document.getElementById('popup').style.display='none' }
+let toastTimer=null;
+function flash(msg){ const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2000); }
 
-/* ---------- camera ---------- */
+/* ===== Kamera ===== */
 async function startCamera(){
   const video=document.getElementById('camera');
   video.setAttribute('autoplay',''); video.setAttribute('muted',''); video.setAttribute('playsinline','');
@@ -160,13 +230,13 @@ async function startCamera(){
 function stopCamera(){ const video=document.getElementById('camera'); const stream=video.srcObject; if(stream){ stream.getTracks().forEach(t=>t.stop()); video.srcObject=null } }
 window.addEventListener('beforeunload', stopCamera);
 
-/* ---------- auth ---------- */
+/* ===== Auth ===== */
 async function login(){
   const user=document.getElementById('username').value.trim();
   const pass=document.getElementById('password').value.trim();
   const found=guruAkun.find(g=>g.username===user && g.password===pass);
   if(!found){ showPopup('Login gagal! Username atau password salah.'); return }
-  try{ if(!db) await openDB(); await migrateFromLocalStorage(); }catch(e){ console.warn('IndexedDB warning:', e); }
+  try{ if(!db) await openDB(); await migrateFromLocalStorageOnce(); }catch(e){ console.warn('IndexedDB:', e); }
   guruAktif=user;
   document.getElementById('welcome').style.display='none';
   document.getElementById('absensi').style.display='block';
@@ -175,6 +245,7 @@ async function login(){
   const currentMonth=new Date().getMonth().toString();
   document.getElementById('bulanSelect').value=currentMonth;
   bulanDipilih();
+  updateTodayState();
 }
 function logout(){
   stopCamera(); guruAktif=null;
@@ -183,7 +254,41 @@ function logout(){
   document.getElementById('username').value=''; document.getElementById('password').value='';
 }
 
-/* ---------- bulan selection ---------- */
+/* ===== Status harian & kontrol tombol ===== */
+async function updateTodayState(){
+  const st = document.getElementById('status');
+  const btn = document.getElementById('btnAbsen');
+  if(!st || !btn){ return; }
+  if(!guruAktif){
+    st.textContent=''; btn.textContent='Ambil Absen (Hanya Bulan Berjalan)'; btn.disabled=true; return;
+  }
+  const tahun = new Date().getFullYear();
+  const todayIso = isoFromDate(new Date());
+  const bulanVal = document.getElementById('bulanSelect').value;
+  const currentMonth = new Date().getMonth().toString();
+
+  if(bulanVal !== currentMonth){
+    st.textContent = `Bulan terpilih bukan bulan berjalan (${bulanNama[currentMonth]}). Absen dinonaktifkan.`;
+    btn.textContent = 'Ambil Absen (Hanya Bulan Berjalan)'; btn.disabled = true; return;
+  }
+
+  const rows = await idbGetMonth(guruAktif, Number(bulanVal), tahun);
+  const datang = rows.find(r=>r.isoDate===todayIso && r.jenis==='Datang');
+  const pulang = rows.find(r=>r.isoDate===todayIso && r.jenis==='Pulang');
+
+  if(!datang && !pulang){
+    st.textContent = 'Belum absen hari ini. Silakan Ambil Absen (Datang).';
+    btn.textContent = 'Ambil Absen (Datang)'; btn.disabled = false;
+  }else if(datang && !pulang){
+    st.textContent = `Sudah absen Datang ${datang.jam}. Silakan Ambil Absen (Pulang).`;
+    btn.textContent = 'Ambil Absen (Pulang)'; btn.disabled = false;
+  }else{
+    st.textContent = `Sudah absen Datang ${datang?.jam||'-'} dan Pulang ${pulang?.jam||'-'}. Selesai untuk hari ini.`;
+    btn.textContent = 'Selesai'; btn.disabled = true;
+  }
+}
+
+/* ===== Seleksi Bulan ===== */
 function bulanDipilih(){
   const val=document.getElementById('bulanSelect').value;
   const enable=(val!=='');
@@ -196,9 +301,10 @@ function bulanDipilih(){
   const currentMonth=new Date().getMonth().toString();
   document.getElementById('btnAbsen').disabled=!(enable && val===currentMonth);
   tampilkanRekap();
+  updateTodayState();
 }
 
-/* ---------- absen ---------- */
+/* ===== Absen ===== */
 function absen(){
   if(!guruAktif){ return showPopup('Silakan login terlebih dahulu.') }
   const selected=document.getElementById('bulanSelect').value;
@@ -215,7 +321,7 @@ async function captureAndSave(bulanVal){
   const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
   const ctx=canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);
 
-  // waktu sekarang (sekali saja)
+  // waktu sekarang
   const now=new Date();
   const iso=isoFromDate(now);
   const jam=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
@@ -242,11 +348,12 @@ async function captureAndSave(bulanVal){
 
   try{ await idbAdd(rec) }catch(e){ return showPopup('Gagal menyimpan ke IndexedDB: '+(e?.message||e)) }
   document.getElementById('status').innerText=`Status: Hadir (${jenis})`;
-  showPopup(`✅ Absen ${jenis} berhasil!`);
+  showPopup(`✅ Absen ${jenis} berhasil!`); flash(`✅ Absen ${jenis} berhasil!`);
   await tampilkanRekap();
+  await updateTodayState();
 }
 
-/* ---------- tampil rekap ---------- */
+/* ===== Rekap ===== */
 async function tampilkanRekap(){
   const bulanVal=document.getElementById('bulanSelect').value;
   if(!guruAktif||bulanVal===''){ document.getElementById('rekap').innerHTML=''; document.getElementById('stats').innerText=''; return }
@@ -280,18 +387,28 @@ async function tampilkanRekap(){
   document.getElementById('stats').innerText=`Total hari tercatat: ${dates.length} | Datang: ${totalDatang} | Pulang: ${totalPulang}`;
 }
 
-/* ---------- Hapus / Ekspor / Impor / Privasi ---------- */
+/* ===== Hapus / Ekspor / Impor / Privasi ===== */
 async function hapusDataBulanIni(){
   if(!guruAktif) return showPopup('Silakan login dulu.');
   const bulanVal=document.getElementById('bulanSelect').value;
   if(bulanVal==='') return showPopup('Pilih bulan dulu.');
   const tahun=new Date().getFullYear();
   const monthIdx=Number(bulanVal);
+
   const ok = confirm(`Yakin menghapus SEMUA data bulan ${bulanNama[monthIdx]} ${tahun} untuk ${guruAktif}?\nTindakan ini tidak dapat dibatalkan.`);
   if(!ok) return;
+
   await idbDeleteMonth(guruAktif, monthIdx, tahun);
-  showPopup('Data bulan terpilih telah dihapus.');
+
+  // pastikan sumber lama kosong supaya tidak balik lagi setelah login
+  localStorage.removeItem('rekap');
+
+  // verifikasi
+  const sisa = await idbGetMonth(guruAktif, monthIdx, tahun);
+  showPopup(sisa.length===0 ? '✅ Data bulan terpilih telah dihapus.' : `⚠️ Sebagian data gagal dihapus (${sisa.length} baris). Ulangi sekali lagi.`);
+
   await tampilkanRekap();
+  await updateTodayState();
 }
 
 async function exportBulan(){
@@ -313,7 +430,7 @@ async function importBulan(ev){
     if(!data || !Array.isArray(data.rows)) throw new Error('Format tidak valid');
     for(const r of data.rows){ const fotoBlob=r.foto? dataURLtoBlob(r.foto):null; const rec={...r, foto:fotoBlob}; delete rec.id; await idbAdd(rec); }
     showPopup('Impor selesai. Data ditambahkan (tidak menimpa).');
-    await tampilkanRekap();
+    await tampilkanRekap(); await updateTodayState();
   }catch(e){ showPopup('Gagal impor: '+(e?.message||e)) }
   finally{ ev.target.value='' }
 }
@@ -321,17 +438,12 @@ async function importBulan(ev){
 function openPrivacy(){ document.getElementById('privacyModal').style.display='flex' }
 function closePrivacy(){ document.getElementById('privacyModal').style.display='none' }
 
-/* ---------- utils ---------- */
+/* ===== Utils ===== */
 async function sha256(str){ const enc=new TextEncoder().encode(str); const buf=await crypto.subtle.digest('SHA-256',enc); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('') }
 function blobToDataURL(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob) }) }
-function dataURLtoBlob(dataurl){
-  const arr=dataurl.split(','), mime=arr[0].match(/:(.*?);/)[1];
-  const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n);
-  while(n--){ u8[n]=bstr.charCodeAt(n) }
-  return new Blob([u8], {type:mime});
-}
+function dataURLtoBlob(dataurl){ const arr=dataurl.split(','), mime=arr[0].match(/:(.*?);/)[1]; const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--){ u8[n]=bstr.charCodeAt(n) } return new Blob([u8], {type:mime}); }
 
-/* ---------- print rekap ---------- */
+/* ===== Print ===== */
 async function printRekap(){
   if(!guruAktif) return showPopup('Silakan login dulu');
   const bulanVal=document.getElementById('bulanSelect').value; if(bulanVal==='') return showPopup('Pilih bulan dulu');
@@ -343,13 +455,12 @@ async function printRekap(){
     if(r.jenis==='Datang') byDate[r.isoDate].datang={jam:r.jam,foto:r.foto};
     if(r.jenis==='Pulang') byDate[r.isoDate].pulang={jam:r.jam,foto:r.foto};
   });
-  const dates=Object.keys(byDate).sort();
 
   const w=window.open('','_blank','width=900,height=700');
   const style=`<style>body{font-family:Arial,sans-serif;color:#000;margin:20px}h2{margin-bottom:6px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #444;padding:6px;font-size:13px;text-align:center}th{background:#eee}img{border-radius:6px}</style>`;
   let table=`<h2>Rekap Absensi Guru ${guruAktif} - ${bulanNama[monthIdx]} ${tahun}</h2>`;
   table+=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Datang</th><th>Foto Datang</th><th>Pulang</th><th>Foto Pulang</th></tr></thead><tbody>`;
-  for(const d of dates){
+  for(const d of Object.keys(byDate).sort()){
     const row=byDate[d];
     const datangJam=row.datang?row.datang.jam:'-';
     const pulangJam=row.pulang?row.pulang.jam:'-';
@@ -365,7 +476,7 @@ async function printRekap(){
 }
 </script>
 
-<!-- Privacy Modal -->
+<!-- PRIVACY -->
 <div id="privacyModal" class="popup">
   <div class="box" style="text-align:left">
     <h3 style="margin-top:0;text-align:center">Kebijakan Privasi Ringkas</h3>
@@ -378,6 +489,9 @@ async function printRekap(){
     <div style="text-align:center"><button onclick="closePrivacy()">Tutup</button></div>
   </div>
 </div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
 
 </body>
 </html>
