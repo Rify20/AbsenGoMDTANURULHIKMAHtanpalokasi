@@ -80,7 +80,6 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700;}
   <div class="keterangan">
     <span>🕒 Pilih bulan dulu sebelum bisa absen</span>
     <span>➡ Absen otomatis Datang / Pulang (per tanggal)</span>
-    <span id="ketArea" style="color:#4CAF50;">📍 Absen tanpa batasan lokasi</span>
     <span>📷 Selfie otomatis disimpan</span>
   </div>
 
@@ -168,8 +167,6 @@ function absen(){
   const bulanVal = document.getElementById('bulanSelect').value;
   if(bulanVal === ''){ showPopup('Silakan pilih bulan terlebih dahulu.'); return; }
 
-  // langsung simpan tanpa cek lokasi
-  document.getElementById('ketArea').style.color = '#4CAF50';
   captureAndSave(bulanVal);
 }
 
@@ -191,11 +188,29 @@ function captureAndSave(bulanVal){
   const jam = now.toLocaleTimeString();
   const tahun = now.getFullYear();
 
-  const dataAll = JSON.parse(localStorage.getItem('rekap')) || [];
-  const sudahDatang = dataAll.find(r => r.guru === guruAktif && r.isoDate === iso && r.jenis === 'Datang' && String(r.month) === String(bulanVal) && r.year === tahun);
-  const jenis = sudahDatang ? 'Pulang' : 'Datang';
-  const status = 'Hadir';
+  let dataAll = JSON.parse(localStorage.getItem('rekap')) || [];
 
+  // cek status absen hari ini
+  const sudahDatang = dataAll.find(r =>
+    r.guru === guruAktif && r.isoDate === iso && r.jenis === 'Datang' &&
+    String(r.month) === String(bulanVal) && r.year === tahun
+  );
+  const sudahPulang = dataAll.find(r =>
+    r.guru === guruAktif && r.isoDate === iso && r.jenis === 'Pulang' &&
+    String(r.month) === String(bulanVal) && r.year === tahun
+  );
+
+  let jenis = '';
+  if (!sudahDatang) {
+    jenis = 'Datang';
+  } else if (sudahDatang && !sudahPulang) {
+    jenis = 'Pulang';
+  } else {
+    showPopup('Anda sudah absen Datang & Pulang hari ini.');
+    return;
+  }
+
+  const status = 'Hadir';
   const rec = {
     guru: guruAktif,
     isoDate: iso,
@@ -213,6 +228,12 @@ function captureAndSave(bulanVal){
   localStorage.setItem('rekap', JSON.stringify(dataAll));
 
   document.getElementById('status').innerText = `Status: ${status} (${jenis})`;
+  if(jenis === 'Datang'){
+    showPopup('✅ Absen Datang berhasil!');
+  } else if(jenis === 'Pulang'){
+    showPopup('✅ Absen Pulang berhasil!');
+  }
+
   tampilkanRekap();
 }
 
