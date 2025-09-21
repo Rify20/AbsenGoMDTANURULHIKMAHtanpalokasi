@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Aplikasi Absensi Guru MDTA</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
-<!-- Preload gambar logo agar cepat muncul -->
 <link rel="preload" as="image" href="./assets/asset-yayasan-nurul-hikmah.png">
 <style>
-:root{ --bg1:#2E7D32; --bg2:#FF9800; --accent:#A5D6A7; --txt:#E0E0E0;
-/* ==== ukuran logo responsif ==== */
---logo-size: clamp(72px, 18vw, 120px);
+:root{
+  --bg1:#2E7D32; --bg2:#FF9800; --accent:#A5D6A7; --txt:#E0E0E0;
+  --logo-size: clamp(72px, 18vw, 120px);
 }
 *{box-sizing:border-box}
 body{
@@ -45,40 +44,20 @@ th{background:rgba(255,255,255,0.02); color:#A5D6A7; font-weight:700}
 .button-like{display:inline-block; padding:10px 12px; border-radius:10px; background:linear-gradient(45deg,#90caf9,#42a5f5); color:#fff; font-weight:700; cursor:pointer; margin-top:10px; text-align:center}
 .button-like.disabled{background:#666; cursor:not-allowed}
 
-/* ====== BRAND / LOGO (baru) ====== */
+/* ====== BRAND / LOGO (tanpa animasi) ====== */
 .brand{
   display:flex; align-items:center; justify-content:center;
   margin-top:4px; margin-bottom:12px;
 }
 .brand .logo{
   width:var(--logo-size); height:var(--logo-size);
-  aspect-ratio: 1/1;              /* selalu kotak */
+  aspect-ratio: 1/1;
   display:block;
-  object-fit:contain;              /* jaga proporsi logo */
+  object-fit:contain;
   padding:12px;
-
-  /* putih solid (bukan transparan) */
-  background:#ffffff !important;
-
-  border-radius:18px;              /* ubah ke 50% jika mau bulat penuh */
-  box-shadow:0 14px 28px rgba(0,0,0,.28);
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.08));
-  will-change:transform, box-shadow, opacity;
-
-  /* animasi elegan */
-  animation:brand-enter .6s ease both, brand-float 5s ease-in-out 1s infinite;
-}
-/* Hover ringan (opsional) */
-.brand .logo:hover{ transform: translateY(-2px) scale(1.02); }
-
-/* Animasi elegan */
-@keyframes brand-enter{
-  from{ opacity:0; transform: translateY(8px) scale(.96); }
-  to  { opacity:1; transform: translateY(0)   scale(1); }
-}
-@keyframes brand-float{
-  0%,100%{ transform: translateY(0); box-shadow:0 14px 28px rgba(0,0,0,.28); }
-  50%    { transform: translateY(-4px); box-shadow:0 18px 32px rgba(0,0,0,.34); }
+  background:#ffffff;      /* putih solid */
+  border-radius:18px;
+  box-shadow:0 14px 28px rgba(0,0,0,.18);
 }
 </style>
 </head>
@@ -86,9 +65,20 @@ th{background:rgba(255,255,255,0.02); color:#A5D6A7; font-weight:700}
 
 <!-- LOGIN -->
 <div id="welcome" class="card">
-  <!-- ==== LOGO di halaman login ==== -->
   <div class="brand">
-    <img id="logoImg" src="https://scontent-cgk1-1.xx.fbcdn.net/v/t39.30808-6/550690625_122133856574921090_4223263372556809866_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=833d8c&_nc_ohc=0IRtanLyV_QQ7kNvwFgsbIx&_nc_oc=AdmEdVn3lGxFRZnVApSuaxqsw9CyeV_h7ON4PURmzWLv11EOzIXLEtwpK1s9jJQcMMeMzklChaD5RnH8OQ13u2Nu&_nc_zt=23&_nc_ht=scontent-cgk1-1.xx&_nc_gid=YIzj4dbE-WkhQ0x3olYTRA&oh=00_AfY3sNlaBlBKnEfiVN8vawyCqFgocKFek8iN-k89cApb6w&oe=68D592A8" alt="Logo MDTA" class="logo" loading="eager" decoding="async">
+    <img
+      id="logoImg"
+      class="logo"
+      alt="Logo MDTA"
+      width="120" height="120"
+      referrerpolicy="no-referrer"
+      crossorigin="anonymous"
+      loading="eager"
+      decoding="async"
+      draggable="false"
+      src="https://scontent-cgk1-1.xx.fbcdn.net/v/t39.30808-6/550690625_122133856574921090_4223263372556809866_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=833d8c&_nc_ohc=0IRtanLyV_QQ7kNvwFgsbIx&_nc_oc=AdmEdVn3lGxFRZnVApSuaxqsw9CyeV_h7ON4PURmzWLv11EOzIXLEtwpK1s9jJQcMMeMzklChaD5RnH8OQ13u2Nu&_nc_zt=23&_nc_ht=scontent-cgk1-1.xx&_nc_gid=YIzj4dbE-WkhQ0x3olYTRA&oh=00_AfY3sNlaBlBKnEfiVN8vawyCqFgocKFek8iN-k89cApb6w&oe=68D592A8"
+      onerror="logoFallback()"
+    >
   </div>
 
   <h2>Login Guru</h2>
@@ -142,6 +132,22 @@ th{background:rgba(255,255,255,0.02); color:#A5D6A7; font-weight:700}
 <div id="popup" class="popup"><div class="box"><p id="popup-message"></p><button onclick="closePopup()">OK</button></div></div>
 
 <script>
+/* ===== Fallback logo: hanya aktif kalau source FB gagal ===== */
+function logoFallback(){
+  const img=document.getElementById('logoImg');
+  const list=[
+    "./assets/asset-yayasan-nurul-hikmah.png",
+    "./assets/asset-yayasan-nurul-hikmah.PNG",
+    "./logo.png",
+    'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%" height="100%" rx="24" fill="white"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Poppins,Arial" font-size="18" fill="#2E7D32">LOGO</text></svg>')
+  ];
+  let i=Number(img.dataset.idx||0);
+  if(i<list.length){
+    img.dataset.idx=i+1;
+    img.src=list[i];
+  }
+}
+
 /* ===== KONSTANTA & STATE ===== */
 const guruAkun = [{username:"guru1", password:"123"}, {username:"guru2", password:"456"}];
 let guruAktif = null;
@@ -196,20 +202,17 @@ function idbGetMonth(guru, month, year){
   });
 }
 
-/* Hapus bulan: via index + sweep legacy, resolve saat commit selesai */
+/* Hapus bulan: via index + sweep legacy */
 function idbDeleteMonth(guru, month, year){
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(STORE,'readwrite');
     const st=tx.objectStore(STORE);
-
-    // 1) lewat index
     const idx=st.index('byGuruMonthYear');
     const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`));
     req.onsuccess=e=>{
       const cur=e.target.result;
       if(cur){ st.delete(cur.primaryKey); cur.continue(); }
       else{
-        // 2) sweep legacy (month string / dihitung dari isoDate)
         const sweep=st.openCursor();
         sweep.onsuccess=ev=>{
           const c=ev.target.result;
@@ -230,12 +233,12 @@ function idbDeleteMonth(guru, month, year){
   });
 }
 
-/* Migrasi localStorage -> IndexedDB hanya sekali */
+/* Migrasi localStorage -> IndexedDB */
 async function migrateFromLocalStorageOnce(){
   if(localStorage.getItem(MIGRATED_KEY)) return;
   const old = JSON.parse(localStorage.getItem('rekap')||'[]');
   if(Array.isArray(old) && old.length){
-    for(const r of old){ try{ await idbAdd(r); }catch(_){/* abaikan duplikat */} }
+    for(const r of old){ try{ await idbAdd(r); }catch(_){ } }
   }
   localStorage.removeItem('rekap');
   localStorage.setItem(MIGRATED_KEY,'1');
@@ -445,11 +448,8 @@ async function hapusDataBulanIni(){
   if(!ok) return;
 
   await idbDeleteMonth(guruAktif, monthIdx, tahun);
-
-  // pastikan sumber lama kosong supaya tidak balik lagi setelah login
   localStorage.removeItem('rekap');
 
-  // verifikasi
   const sisa = await idbGetMonth(guruAktif, monthIdx, tahun);
   showPopup(sisa.length===0 ? '✅ Data bulan terpilih telah dihapus.' : `⚠️ Sebagian data gagal dihapus (${sisa.length} baris). Ulangi sekali lagi.`);
 
@@ -488,67 +488,6 @@ function closePrivacy(){ document.getElementById('privacyModal').style.display='
 async function sha256(str){ const enc=new TextEncoder().encode(str); const buf=await crypto.subtle.digest('SHA-256',enc); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('') }
 function blobToDataURL(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob) }) }
 function dataURLtoBlob(dataurl){ const arr=dataurl.split(','), mime=arr[0].match(/:(.*?);/)[1]; const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--){ u8[n]=bstr.charCodeAt(n) } return new Blob([u8], {type:mime}); }
-
-/* ===== Pastikan logo tampil di HP (cek beberapa jalur + fallback) ===== */
-function testImage(url){
-  return new Promise(r=>{
-    const i=new Image();
-    i.onload=()=>r(true);
-    i.onerror=()=>r(false);
-    i.src=url + '?v=' + Date.now(); // bust cache
-  });
-}
-async function ensureLogo(){
-  const imgEl = document.getElementById('logoImg');
-  const candidates = [
-    "./assets/asset-yayasan-nurul-hikmah.png",  // utama (disarankan)
-    "./assets/asset-yayasan-nurul-hikmah.PNG",  // jika file .PNG huruf besar
-    "./asset-yayasan-nurul-hikmah.png",         // jika tidak di folder assets
-    "./logo.png"                                 // cadangan umum
-  ];
-  for(const url of candidates){
-    if(await testImage(url)){ imgEl.src=url + '?v=' + Date.now(); return; }
-  }
-  // fallback SVG kalau semua gagal
-  imgEl.src='data:image/svg+xml;utf8,'+encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%" height="100%" rx="24" fill="white"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Poppins,Arial" font-size="18" fill="#2E7D32">LOGO</text></svg>'
-  );
-}
-
-/* ===== Print ===== */
-async function printRekap(){
-  if(!guruAktif) return showPopup('Silakan login dulu');
-  const bulanVal=document.getElementById('bulanSelect').value; if(bulanVal==='') return showPopup('Pilih bulan dulu');
-  const tahun=new Date().getFullYear(), monthIdx=Number(bulanVal);
-  const filtered=await idbGetMonth(guruAktif, monthIdx, tahun);
-  if(filtered.length===0) return showPopup('Tidak ada data untuk dicetak pada bulan ini.');
-
-  const byDate={}; filtered.forEach(r=>{ if(!byDate[r.isoDate]) byDate[r.isoDate]={dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
-    if(r.jenis==='Datang') byDate[r.isoDate].datang={jam:r.jam,foto:r.foto};
-    if(r.jenis==='Pulang') byDate[r.isoDate].pulang={jam:r.jam,foto:r.foto};
-  });
-
-  const w=window.open('','_blank','width=900,height=700');
-  const style=`<style>body{font-family:Arial,sans-serif;color:#000;margin:20px}h2{margin-bottom:6px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #444;padding:6px;font-size:13px;text-align:center}th{background:#eee}img{border-radius:6px}</style>`;
-  let table=`<h2>Rekap Absensi Guru ${guruAktif} - ${bulanNama[monthIdx]} ${tahun}</h2>`;
-  table+=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Datang</th><th>Foto Datang</th><th>Pulang</th><th>Foto Pulang</th></tr></thead><tbody>`;
-  for(const d of Object.keys(byDate).sort()){
-    const row=byDate[d];
-    const datangJam=row.datang?row.datang.jam:'-';
-    const pulangJam=row.pulang?row.pulang.jam:'-';
-    const datangUrl=row.datang?URL.createObjectURL(row.datang.foto):null;
-    const pulangUrl=row.pulang?URL.createObjectURL(row.pulang.foto):null;
-    const datangImg=datangUrl?`<img src="${datangUrl}" width="60">`:'-';
-    const pulangImg=pulangUrl?`<img src="${pulangUrl}" width="60">`:'-';
-    table+=`<tr><td>${row.dayName}</td><td>${row.displayDate}</td><td>${datangJam}</td><td>${datangImg}</td><td>${pulangJam}</td><td>${pulangImg}</td></tr>`;
-  }
-  table+=`</tbody></table>`;
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rekap ${guruAktif}</title>${style}</head><body>${table}</body></html>`);
-  w.document.close(); w.focus(); setTimeout(()=>w.print(),500);
-}
-
-/* Jalankan pengecekan logo saat halaman siap */
-ensureLogo();
 </script>
 
 <!-- PRIVACY -->
@@ -570,4 +509,3 @@ ensureLogo();
 
 </body>
 </html>
-```
