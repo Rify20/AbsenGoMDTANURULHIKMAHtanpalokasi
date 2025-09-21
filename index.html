@@ -9,40 +9,42 @@
 :root{
   --bg1:#2E7D32; --bg2:#FF9800; --accent:#A5D6A7; --txt:#E0E0E0;
 }
-*{box-sizing:border-box;}
+*{box-sizing:border-box}
 body{
-  font-family:'Poppins',sans-serif;
-  margin:0; min-height:100vh;
+  font-family:'Poppins',sans-serif; margin:0; min-height:100vh;
   background:linear-gradient(135deg,var(--bg1),var(--bg2));
   display:flex; align-items:center; justify-content:center; padding:20px; color:var(--txt);
 }
 .card, #absensi{
   background:rgba(255,255,255,0.08);
-  border-radius:16px; padding:24px; width:100%; max-width:460px; backdrop-filter:blur(8px);
+  border-radius:16px; padding:24px; width:100%; max-width:520px; backdrop-filter:blur(8px);
   border:1px solid rgba(255,255,255,0.08);
 }
-h2{margin:0 0 14px 0; font-size:1.6rem; color:#fff;}
-.input-group{margin:12px 0;}
-input, select, button{width:100%; padding:10px 12px; border-radius:10px; border:none; font-size:15px;}
-input, select{background:rgba(255,255,255,0.06); color:var(--txt);}
+h2{margin:0 0 14px 0; font-size:1.6rem; color:#fff}
+.input-group{margin:12px 0}
+input, select, button{width:100%; padding:10px 12px; border-radius:10px; border:none; font-size:15px}
+input, select{background:rgba(255,255,255,0.06); color:var(--txt)}
 button{
-  background:linear-gradient(45deg,var(--accent),#81C784);
-  color:#fff; font-weight:700; cursor:pointer; margin-top:10px;
-  position:relative; z-index:9999;
+  background:linear-gradient(45deg,var(--accent),#81C784); color:#fff; font-weight:700; cursor:pointer; margin-top:10px;
+  position:relative; z-index:1
 }
-button:disabled{background:#666; cursor:not-allowed;}
-#printBtn{background:linear-gradient(45deg,#FF9800,#FB8C00);}
-#camera{width:100%; border-radius:12px; margin:12px 0; max-height:320px; object-fit:cover; border:3px solid var(--accent);}
-.keterangan{font-size:13px; text-align:left; margin-top:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;}
-.keterangan span{display:block; margin:4px 0;}
-#rekap{margin-top:14px;}
-table{width:100%; border-collapse:collapse; margin-top:10px; background:rgba(255,255,255,0.03);}
-th, td{padding:8px; border:1px solid rgba(255,255,255,0.06); font-size:13px; text-align:center; color:var(--txt);}
-th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700;}
-.stats{margin-top:10px; font-weight:700; color:var(--accent);}
-.popup{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;}
-.popup .box{background:#fff; color:#222; padding:18px; border-radius:12px; width:90%; max-width:360px; text-align:center;}
-.popup button{margin-top:12px; padding:8px 18px; border-radius:8px; background:#2E7D32; color:#fff; border:none;}
+button:disabled{background:#666; cursor:not-allowed}
+#btnPrint{background:linear-gradient(45deg,#FF9800,#FB8C00)}
+#logoutBtn{background:linear-gradient(45deg,#ef5350,#e53935)}
+#camera{width:100%; border-radius:12px; margin:12px 0; max-height:320px; object-fit:cover; border:3px solid var(--accent)}
+.keterangan{font-size:13px; text-align:left; margin-top:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px}
+.keterangan span{display:block; margin:4px 0}
+#rekap{margin-top:14px}
+table{width:100%; border-collapse:collapse; margin-top:10px; background:rgba(255,255,255,0.03)}
+th, td{padding:8px; border:1px solid rgba(255,255,255,0.06); font-size:13px; text-align:center; color:var(--txt)}
+th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
+.stats{margin-top:10px; font-weight:700; color:var(--accent)}
+.header-row{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:8px}
+.small{font-size:12px; opacity:.85}
+.row-actions{display:flex; gap:8px}
+.popup{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center}
+.popup .box{background:#fff; color:#222; padding:18px; border-radius:12px; width:90%; max-width:360px; text-align:center}
+.popup button{margin-top:12px; padding:8px 18px; border-radius:8px; background:#2E7D32; color:#fff; border:none}
 </style>
 </head>
 <body>
@@ -57,13 +59,19 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700;}
 
 <!-- ABSENSI -->
 <div id="absensi" class="card" style="display:none;">
-  <h2>Absensi Harian</h2>
+  <div class="header-row">
+    <h2 style="margin-bottom:0">Absensi Harian</h2>
+    <div class="row-actions" style="min-width:40%">
+      <button id="logoutBtn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="small" id="guruInfo"></div>
 
   <video id="camera" autoplay playsinline muted></video>
 
   <div class="input-group">
     <select id="bulanSelect" onchange="bulanDipilih()">
-      <option value="">--Pilih Bulan--</option>
+      <option value="">--Pilih Bulan untuk Lihat/Print--</option>
       <option value="0">Januari</option><option value="1">Februari</option>
       <option value="2">Maret</option><option value="3">April</option>
       <option value="4">Mei</option><option value="5">Juni</option>
@@ -73,18 +81,24 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700;}
     </select>
   </div>
 
-  <button id="btnAbsen" disabled>Ambil Absen</button>
-  <button id="btnPrint" onclick="printRekap()" disabled>Print Rekap Bulanan</button>
+  <div class="row-actions">
+    <button id="btnAbsen" disabled onclick="absen()">Ambil Absen (Hanya Bulan Berjalan)</button>
+    <button id="btnPrint" onclick="printRekap()" disabled>Print Rekap Bulanan</button>
+  </div>
   <p id="status" style="margin-top:8px;"></p>
 
   <div class="keterangan">
-    <span>🕒 Pilih bulan dulu sebelum bisa absen</span>
-    <span>➡ Absen otomatis Datang / Pulang (per tanggal)</span>
-    <span>📷 Selfie otomatis disimpan</span>
+    <span>🕒 Untuk melakukan absen, bulan terpilih harus sama dengan <b>bulan berjalan</b>.</span>
+    <span>➡ Absen otomatis <b>Datang</b> lalu <b>Pulang</b> (per tanggal).</span>
+    <span>📷 Selfie disimpan (JPEG terkompres) di penyimpanan browser.</span>
   </div>
 
   <div id="rekap"></div>
   <div class="stats" id="stats"></div>
+
+  <div class="row-actions">
+    <button id="btnClearMonth" onclick="hapusDataBulanIni()" disabled>Hapus Data Bulan Terpilih</button>
+  </div>
 </div>
 
 <!-- Popup -->
@@ -92,85 +106,112 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700;}
 
 <script>
 /* ---------- data & konstanta ---------- */
-const guruAkun = [{username:"guru1", password:"123"},{username:"guru2", password:"456"}];
+const guruAkun = [
+  {username:"guru1", password:"123"},
+  {username:"guru2", password:"456"}
+];
 let guruAktif = null;
 const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const hariNama = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 
 /* ---------- helper ---------- */
-function pad2(n){return String(n).padStart(2,'0');}
-function isoFromDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function pad2(n){return String(n).padStart(2,'0')}
+function isoFromDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` }
 function displayDateFromISO(iso){
   const [y,m,d] = iso.split('-').map(x=>parseInt(x,10));
-  return `${d} ${bulanNama[m-1]} ${y}`;
+  return `${d} ${bulanNama[m-1]} ${y}`
 }
 function dayNameFromISO(iso){
   const [y,m,d] = iso.split('-').map(x=>parseInt(x,10));
-  return hariNama[new Date(y,m-1,d).getDay()];
+  return hariNama[new Date(y,m-1,d).getDay()]
 }
 function showPopup(msg){
   document.getElementById('popup-message').innerHTML = msg;
-  document.getElementById('popup').style.display = 'flex';
+  document.getElementById('popup').style.display = 'flex'
 }
-function closePopup(){ document.getElementById('popup').style.display = 'none'; }
+function closePopup(){ document.getElementById('popup').style.display = 'none' }
 
-/* ---------- login & camera ---------- */
+/* ---------- camera ---------- */
+async function startCamera(){
+  const video = document.getElementById('camera');
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    showPopup('Browser tidak mendukung kamera.');
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    video.srcObject = stream;
+    await new Promise(res => video.onloadedmetadata = res);
+  }catch(err){ showPopup('Kamera tidak bisa diakses: ' + err.message) }
+}
+function stopCamera(){
+  const video = document.getElementById('camera');
+  const stream = video.srcObject;
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); video.srcObject=null }
+}
+window.addEventListener('beforeunload', stopCamera);
+
+/* ---------- auth ---------- */
 function login(){
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
   const found = guruAkun.find(g => g.username === user && g.password === pass);
-  if(!found){ showPopup('Login gagal! Username atau password salah.'); return; }
+  if(!found){ showPopup('Login gagal! Username atau password salah.'); return }
   guruAktif = user;
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('absensi').style.display = 'block';
+  document.getElementById('guruInfo').textContent = `Guru aktif: ${guruAktif}`;
   startCamera();
-  document.getElementById('bulanSelect').value = '';
-  document.getElementById('btnAbsen').disabled = true;
-  document.getElementById('btnPrint').disabled = true;
-  document.getElementById('status').innerText = '';
-  document.getElementById('rekap').innerHTML = '';
-  document.getElementById('stats').innerText = '';
-  document.getElementById("btnAbsen").addEventListener("click", absen);
+  // auto pilih bulan berjalan untuk kemudahan absen
+  const currentMonth = new Date().getMonth().toString();
+  document.getElementById('bulanSelect').value = currentMonth;
+  bulanDipilih();
 }
-
-/* ---------- camera ---------- */
-function startCamera(){
-  const video = document.getElementById('camera');
-  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => { showPopup('Kamera tidak bisa diakses: ' + err.message); });
-  } else { showPopup('Browser tidak mendukung kamera.'); }
+function logout(){
+  stopCamera();
+  guruAktif = null;
+  document.getElementById('welcome').style.display = 'block';
+  document.getElementById('absensi').style.display = 'none';
+  document.getElementById('username').value = '';
+  document.getElementById('password').value = '';
 }
 
 /* ---------- bulan selection ---------- */
 function bulanDipilih(){
   const val = document.getElementById('bulanSelect').value;
   const enable = (val !== '');
-  document.getElementById('btnAbsen').disabled = !enable;
+  // Print & Hapus data aktif untuk bulan apapun yang dipilih
   document.getElementById('btnPrint').disabled = !enable;
+  document.getElementById('btnClearMonth').disabled = !enable;
+  // Absen hanya jika bulan terpilih == bulan berjalan
+  const currentMonth = new Date().getMonth().toString();
+  document.getElementById('btnAbsen').disabled = !(enable && val === currentMonth);
   tampilkanRekap();
 }
 
 /* ---------- absen ---------- */
 function absen(){
-  if(!guruAktif){ showPopup('Silakan login terlebih dahulu.'); return; }
-  const bulanVal = document.getElementById('bulanSelect').value;
-  if(bulanVal === ''){ showPopup('Silakan pilih bulan terlebih dahulu.'); return; }
-  captureAndSave(bulanVal);
+  if(!guruAktif){ return showPopup('Silakan login terlebih dahulu.') }
+  const selected = document.getElementById('bulanSelect').value;
+  if(selected === ''){ return showPopup('Silakan pilih bulan terlebih dahulu.') }
+  const currentMonth = new Date().getMonth().toString();
+  if(selected !== currentMonth){
+    return showPopup(`Bulan terpilih tidak sama dengan bulan berjalan (${bulanNama[currentMonth]}). Silakan pilih ${bulanNama[currentMonth]} untuk absen.`)
+  }
+  captureAndSave(currentMonth);
 }
 
 function captureAndSave(bulanVal){
   const video = document.getElementById('camera');
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-  const foto = canvas.toDataURL('image/png');
+  const w = video.videoWidth || 640; const h = video.videoHeight || 480;
+  const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, w, h);
+  // JPEG terkompres (hemat ruang)
+  const foto = canvas.toDataURL('image/jpeg', 0.7);
 
   const now = new Date();
   const iso = isoFromDate(now);
-  const jam = now.toLocaleTimeString();
+  const jam = now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const tahun = now.getFullYear();
 
   let dataAll = JSON.parse(localStorage.getItem('rekap')) || [];
@@ -180,55 +221,117 @@ function captureAndSave(bulanVal){
   let jenis='';
   if(!sudahDatang) jenis='Datang';
   else if(!sudahPulang) jenis='Pulang';
-  else { showPopup('Anda sudah absen Datang & Pulang hari ini.'); return; }
+  else { return showPopup('Anda sudah absen Datang & Pulang hari ini.') }
 
-  const rec={ guru:guruAktif, isoDate:iso, displayDate:displayDateFromISO(iso), dayName:dayNameFromISO(iso), jam:jam, status:'Hadir', jenis:jenis, foto:foto, month:Number(bulanVal), year:tahun };
+  const rec={ guru:guruAktif, isoDate:iso, displayDate:displayDateFromISO(iso), dayName:dayNameFromISO(iso), jam, status:'Hadir', jenis, foto, month:Number(bulanVal), year:tahun };
   dataAll.push(rec);
-  localStorage.setItem('rekap', JSON.stringify(dataAll));
+  try{
+    localStorage.setItem('rekap', JSON.stringify(dataAll));
+  }catch(e){
+    return showPopup('Penyimpanan penuh. Hapus data lama atau kurangi ukuran foto.');
+  }
   document.getElementById('status').innerText=`Status: Hadir (${jenis})`;
   showPopup(`✅ Absen ${jenis} berhasil!`);
   tampilkanRekap();
 }
 
-/* ---------- tampil rekap ---------- */
+/* ---------- tampil rekap (digabung per tanggal) ---------- */
 function tampilkanRekap(){
   const dataAll = JSON.parse(localStorage.getItem('rekap')) || [];
   const bulanVal = document.getElementById('bulanSelect').value;
-  if(!guruAktif || bulanVal===''){ document.getElementById('rekap').innerHTML=''; document.getElementById('stats').innerText=''; return; }
+  if(!guruAktif || bulanVal===''){
+    document.getElementById('rekap').innerHTML='';
+    document.getElementById('stats').innerText='';
+    return;
+  }
   const tahun=new Date().getFullYear();
   const monthIdx=Number(bulanVal);
   const filtered=dataAll.filter(r=>r.guru===guruAktif && r.month===monthIdx && r.year===tahun);
 
-  if(filtered.length===0){ document.getElementById('rekap').innerHTML=''; document.getElementById('stats').innerText='Belum ada data untuk bulan ini.'; return; }
+  if(filtered.length===0){
+    document.getElementById('rekap').innerHTML='';
+    document.getElementById('stats').innerText='Belum ada data untuk bulan ini.';
+    return;
+  }
 
-  let html=`<h3 style="margin:8px 0 6px 0;color:#fff">Rekap Bulan ${bulanNama[monthIdx]} ${tahun}</h3>`;
-  html+=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Jenis</th><th>Foto</th></tr></thead><tbody>`;
+  // Gabungkan per tanggal
+  const byDate = {};
   filtered.forEach(r=>{
-    html+=`<tr><td>${r.dayName}</td><td>${r.displayDate}</td><td>${r.jam}</td><td>${r.status}</td><td>${r.jenis}</td><td><img src="${r.foto}" width="50" style="border-radius:6px;"/></td></tr>`;
+    if(!byDate[r.isoDate]) byDate[r.isoDate] = {dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
+    if(r.jenis==='Datang') byDate[r.isoDate].datang = {jam:r.jam,foto:r.foto};
+    if(r.jenis==='Pulang') byDate[r.isoDate].pulang = {jam:r.jam,foto:r.foto};
+  });
+
+  const dates = Object.keys(byDate).sort();
+  let html=`<h3 style="margin:8px 0 6px 0;color:#fff">Rekap Bulan ${bulanNama[monthIdx]} ${tahun}</h3>`;
+  html+=`<table><thead><tr>
+    <th>Hari</th><th>Tanggal</th>
+    <th>Datang</th><th>Foto Datang</th>
+    <th>Pulang</th><th>Foto Pulang</th>
+  </tr></thead><tbody>`;
+
+  dates.forEach(d=>{
+    const row = byDate[d];
+    const datangJam = row.datang? row.datang.jam : '-';
+    const pulangJam = row.pulang? row.pulang.jam : '-';
+    const datangImg = row.datang? `<img src="${row.datang.foto}" width="50" style="border-radius:6px;"/>` : '-';
+    const pulangImg = row.pulang? `<img src="${row.pulang.foto}" width="50" style="border-radius:6px;"/>` : '-';
+    html+=`<tr><td>${row.dayName}</td><td>${row.displayDate}</td><td>${datangJam}</td><td>${datangImg}</td><td>${pulangJam}</td><td>${pulangImg}</td></tr>`;
   });
   html+=`</tbody></table>`;
   document.getElementById('rekap').innerHTML=html;
 
   const totalDatang=filtered.filter(r=>r.jenis==='Datang').length;
   const totalPulang=filtered.filter(r=>r.jenis==='Pulang').length;
-  document.getElementById('stats').innerText=`Total baris: ${filtered.length} | Datang: ${totalDatang} | Pulang: ${totalPulang}`;
+  document.getElementById('stats').innerText=`Total hari tercatat: ${dates.length} | Datang: ${totalDatang} | Pulang: ${totalPulang}`;
+}
+
+/* ---------- hapus data bulan terpilih ---------- */
+function hapusDataBulanIni(){
+  if(!guruAktif) return showPopup('Silakan login dulu.');
+  const bulanVal=document.getElementById('bulanSelect').value;
+  if(bulanVal==='') return showPopup('Pilih bulan dulu.');
+  const tahun=new Date().getFullYear();
+  const monthIdx=Number(bulanVal);
+  const dataAll=JSON.parse(localStorage.getItem('rekap'))||[];
+  const sisa = dataAll.filter(r=>!(r.guru===guruAktif && r.month===monthIdx && r.year===tahun));
+  localStorage.setItem('rekap', JSON.stringify(sisa));
+  showPopup('Data bulan terpilih telah dihapus.');
+  tampilkanRekap();
 }
 
 /* ---------- print rekap ---------- */
 function printRekap(){
-  if(!guruAktif){ showPopup('Silakan login dulu'); return; }
+  if(!guruAktif){ return showPopup('Silakan login dulu') }
   const bulanVal=document.getElementById('bulanSelect').value;
-  if(bulanVal===''){ showPopup('Pilih bulan dulu'); return; }
+  if(bulanVal===''){ return showPopup('Pilih bulan dulu') }
   const tahun=new Date().getFullYear();
   const monthIdx=Number(bulanVal);
   const dataAll=JSON.parse(localStorage.getItem('rekap'))||[];
   const filtered=dataAll.filter(r=>r.guru===guruAktif && r.month===monthIdx && r.year===tahun);
-  if(filtered.length===0){ showPopup('Tidak ada data untuk dicetak pada bulan ini.'); return; }
+  if(filtered.length===0){ return showPopup('Tidak ada data untuk dicetak pada bulan ini.') }
+
+  // Gabungkan per tanggal untuk cetak
+  const byDate = {};
+  filtered.forEach(r=>{
+    if(!byDate[r.isoDate]) byDate[r.isoDate] = {dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
+    if(r.jenis==='Datang') byDate[r.isoDate].datang = {jam:r.jam,foto:r.foto};
+    if(r.jenis==='Pulang') byDate[r.isoDate].pulang = {jam:r.jam,foto:r.foto};
+  });
+  const dates = Object.keys(byDate).sort();
 
   const w=window.open('','_blank','width=900,height=700');
-  const style=`<style>body{font-family:Arial,sans-serif;color:#000;margin:20px;}h2{margin-bottom:6px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #444;padding:6px;font-size:13px;text-align:center;}th{background:#eee;}img{border-radius:6px;}</style>`;
-  let table=`<h2>Rekap Absensi Guru ${guruAktif} - ${bulanNama[monthIdx]} ${tahun}</h2><table><thead><tr><th>Hari</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Jenis</th><th>Foto</th></tr></thead><tbody>`;
-  filtered.forEach(r=>{ table+=`<tr><td>${r.dayName}</td><td>${r.displayDate}</td><td>${r.jam}</td><td>${r.status}</td><td>${r.jenis}</td><td><img src="${r.foto}" width="60"></td></tr>`; });
+  const style=`<style>body{font-family:Arial,sans-serif;color:#000;margin:20px}h2{margin-bottom:6px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #444;padding:6px;font-size:13px;text-align:center}th{background:#eee}img{border-radius:6px}</style>`;
+  let table=`<h2>Rekap Absensi Guru ${guruAktif} - ${bulanNama[monthIdx]} ${tahun}</h2>`;
+  table+=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Datang</th><th>Foto Datang</th><th>Pulang</th><th>Foto Pulang</th></tr></thead><tbody>`;
+  dates.forEach(d=>{
+    const row=byDate[d];
+    const datangJam=row.datang?row.datang.jam:'-';
+    const pulangJam=row.pulang?row.pulang.jam:'-';
+    const datangImg=row.datang?`<img src="${row.datang.foto}" width="60">`:'-';
+    const pulangImg=row.pulang?`<img src="${row.pulang.foto}" width="60">`:'-';
+    table+=`<tr><td>${row.dayName}</td><td>${row.displayDate}</td><td>${datangJam}</td><td>${datangImg}</td><td>${pulangJam}</td><td>${pulangImg}</td></tr>`;
+  });
   table+=`</tbody></table>`;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rekap ${guruAktif}</title>${style}</head><body>${table}</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),500);
