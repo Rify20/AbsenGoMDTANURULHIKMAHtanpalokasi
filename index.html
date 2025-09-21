@@ -6,28 +6,19 @@
 <title>Aplikasi Absensi Guru MDTA</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg1:#2E7D32; --bg2:#FF9800; --accent:#A5D6A7; --txt:#E0E0E0;
-}
+:root{ --bg1:#2E7D32; --bg2:#FF9800; --accent:#A5D6A7; --txt:#E0E0E0 }
 *{box-sizing:border-box}
 body{
   font-family:'Poppins',sans-serif; margin:0; min-height:100vh;
   background:linear-gradient(135deg,var(--bg1),var(--bg2));
   display:flex; align-items:center; justify-content:center; padding:20px; color:var(--txt);
 }
-.card, #absensi{
-  background:rgba(255,255,255,0.08);
-  border-radius:16px; padding:24px; width:100%; max-width:520px; backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,0.08);
-}
+.card{ background:rgba(255,255,255,0.08); border-radius:16px; padding:24px; width:100%; max-width:520px; backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.08) }
 h2{margin:0 0 14px 0; font-size:1.6rem; color:#fff}
 .input-group{margin:12px 0}
 input, select, button{width:100%; padding:10px 12px; border-radius:10px; border:none; font-size:15px}
 input, select{background:rgba(255,255,255,0.06); color:var(--txt)}
-button{
-  background:linear-gradient(45deg,var(--accent),#81C784); color:#fff; font-weight:700; cursor:pointer; margin-top:10px;
-  position:relative; z-index:1
-}
+button{ background:linear-gradient(45deg,var(--accent),#81C784); color:#fff; font-weight:700; cursor:pointer; margin-top:10px; position:relative; z-index:1 }
 button:disabled{background:#666; cursor:not-allowed}
 #btnPrint{background:linear-gradient(45deg,#FF9800,#FB8C00)}
 #logoutBtn{background:linear-gradient(45deg,#ef5350,#e53935)}
@@ -41,10 +32,16 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
 .stats{margin-top:10px; font-weight:700; color:var(--accent)}
 .header-row{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:8px}
 .small{font-size:12px; opacity:.85}
-.row-actions{display:flex; gap:8px}
-.popup{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center}
+.row-actions{display:flex; gap:8px; flex-wrap:wrap}
+.popup{
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  align-items:center; justify-content:center; z-index:9999; /* penting */
+}
 .popup .box{background:#fff; color:#222; padding:18px; border-radius:12px; width:90%; max-width:360px; text-align:center}
 .popup button{margin-top:12px; padding:8px 18px; border-radius:8px; background:#2E7D32; color:#fff; border:none}
+/* label-style button */
+.button-like{display:inline-block; padding:10px 12px; border-radius:10px; background:linear-gradient(45deg,#90caf9,#42a5f5); color:#fff; font-weight:700; cursor:pointer; margin-top:10px; text-align:center}
+.button-like.disabled{background:#666; cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -83,22 +80,19 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
 
   <div class="row-actions">
     <button id="btnAbsen" disabled onclick="absen()">Ambil Absen (Hanya Bulan Berjalan)</button>
-    <button id="btnPrint" onclick="printRekap()" disabled>Print Rekap Bulanan</button>
+    <button id="btnPrint" onclick="printRekap()" disabled>Ekspor PDF (Print Dialog)</button>
   </div>
-  <p id="status" style="margin-top:8px;"></p>
 
-  <div class="keterangan">
-    <span>🕒 Untuk melakukan absen, bulan terpilih harus sama dengan <b>bulan berjalan</b>.</span>
-    <span>➡ Absen otomatis <b>Datang</b> lalu <b>Pulang</b> (per tanggal).</span>
-    <span>📷 Selfie disimpan (JPEG terkompres) di penyimpanan browser. <b>iOS Safari kuotanya kecil</b>, jadi foto otomatis diperkecil.</span>
+  <div class="row-actions">
+    <button id="btnClearMonth" onclick="hapusDataBulanIni()" disabled>Hapus Data Bulan Terpilih</button>
+    <button id="btnExport" onclick="exportBulan()" disabled>Ekspor JSON</button>
+    <label for="importFile" id="importLabel" class="button-like disabled">Impor JSON</label>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importBulan(event)" disabled>
+    <button id="btnPrivacy" onclick="openPrivacy()">Kebijakan Privasi</button>
   </div>
 
   <div id="rekap"></div>
   <div class="stats" id="stats"></div>
-
-  <div class="row-actions">
-    <button id="btnClearMonth" onclick="hapusDataBulanIni()" disabled>Hapus Data Bulan Terpilih</button>
-  </div>
 </div>
 
 <!-- Popup -->
@@ -106,304 +100,176 @@ th{background:rgba(255,255,255,0.02); color:var(--accent); font-weight:700}
 
 <script>
 /* ---------- data & konstanta ---------- */
-const guruAkun = [
-  {username:"guru1", password:"123"},
-  {username:"guru2", password:"456"}
-];
+const guruAkun = [{username:"guru1", password:"123"}, {username:"guru2", password:"456"}];
 let guruAktif = null;
 const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const hariNama = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 
-/* ---------- IndexedDB (penyimpanan besar & tahan lama) ---------- */
-const DB_NAME = 'absensiDB';
-const DB_VER = 1;
-const STORE = 'rekap';
-let db = null;
-
-function openDB(){
-  return new Promise((resolve, reject)=>{
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = (e)=>{
-      const db = e.target.result;
-      if(!db.objectStoreNames.contains(STORE)){
-        const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('byGuruMonthYear','guru_month_year',{unique:false});
-        store.createIndex('byGuruDateType','guru_iso_jenis',{unique:false});
-      }
-    };
-    req.onsuccess = ()=>{ db = req.result; resolve(db); };
-    req.onerror = ()=> reject(req.error);
-  });
-}
-
-function idbAdd(record){
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE,'readwrite');
-    const st = tx.objectStore(STORE);
-    record.guru_month_year = `${record.guru}|${record.month}|${record.year}`;
-    record.guru_iso_jenis = `${record.guru}|${record.isoDate}|${record.jenis}`;
-    st.add(record);
-    tx.oncomplete = ()=> resolve(true);
-    tx.onerror = ()=> reject(tx.error);
-  });
-}
-
-function idbGetMonth(guru, month, year){
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE,'readonly');
-    const st = tx.objectStore(STORE);
-    const idx = st.index('byGuruMonthYear');
-    const range = IDBKeyRange.only(`${guru}|${month}|${year}`);
-    const res=[]; const req = idx.openCursor(range);
-    req.onsuccess = (e)=>{
-      const cur = e.target.result; if(cur){ res.push(cur.value); cur.continue(); } else resolve(res);
-    };
-    req.onerror = ()=> reject(req.error);
-  });
-}
-
-function idbDeleteMonth(guru, month, year){
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE,'readwrite');
-    const st = tx.objectStore(STORE);
-    const idx = st.index('byGuruMonthYear');
-    const range = IDBKeyRange.only(`${guru}|${month}|${year}`);
-    const req = idx.openCursor(range);
-    req.onsuccess = (e)=>{
-      const cur = e.target.result; if(cur){ st.delete(cur.primaryKey); cur.continue(); } else resolve(true);
-    };
-    req.onerror = ()=> reject(req.error);
-  });
-}
-
-// Migrasi dari localStorage (jika ada) agar tidak hilang
-async function migrateFromLocalStorage(){
-  const old = JSON.parse(localStorage.getItem('rekap')||'[]');
-  if(!old.length) return;
-  for(const r of old){ try{ await idbAdd(r); }catch(_){} }
-  localStorage.removeItem('rekap');
-}
+/* ---------- IndexedDB ---------- */
+const DB_NAME='absensiDB', DB_VER=1, STORE='rekap'; let db=null;
+function openDB(){ return new Promise((resolve,reject)=>{ const req=indexedDB.open(DB_NAME,DB_VER);
+  req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE)){ const st=db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true}); st.createIndex('byGuruMonthYear','guru_month_year',{unique:false}); st.createIndex('byGuruDateType','guru_iso_jenis',{unique:false}); } };
+  req.onsuccess=()=>{ db=req.result; resolve(db) }; req.onerror=()=>reject(req.error);
+});}
+function idbAdd(record){ return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE,'readwrite'), st=tx.objectStore(STORE);
+  record.guru_month_year=`${record.guru}|${record.month}|${record.year}`; record.guru_iso_jenis=`${record.guru}|${record.isoDate}|${record.jenis}`;
+  st.add(record); tx.oncomplete=()=>resolve(true); tx.onerror=()=>reject(tx.error);
+});}
+function idbGetMonth(guru, month, year){ return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE,'readonly'), st=tx.objectStore(STORE), idx=st.index('byGuruMonthYear');
+  const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`)); const res=[];
+  req.onsuccess=e=>{ const cur=e.target.result; if(cur){ res.push(cur.value); cur.continue(); } else resolve(res) };
+  req.onerror=()=>reject(req.error);
+});}
+function idbDeleteMonth(guru, month, year){ return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE,'readwrite'), st=tx.objectStore(STORE), idx=st.index('byGuruMonthYear');
+  const req=idx.openCursor(IDBKeyRange.only(`${guru}|${month}|${year}`));
+  req.onsuccess=e=>{ const cur=e.target.result; if(cur){ st.delete(cur.primaryKey); cur.continue(); } else resolve(true) };
+  req.onerror=()=>reject(req.error);
+});}
+async function migrateFromLocalStorage(){ const old=JSON.parse(localStorage.getItem('rekap')||'[]'); if(!old.length) return; for(const r of old){ try{ await idbAdd(r) }catch(_){}} localStorage.removeItem('rekap') }
 
 /* ---------- helper ---------- */
 function pad2(n){return String(n).padStart(2,'0')}
 function isoFromDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` }
-function displayDateFromISO(iso){
-  const [y,m,d] = iso.split('-').map(x=>parseInt(x,10));
-  return `${d} ${bulanNama[m-1]} ${y}`
-}
-function dayNameFromISO(iso){
-  const [y,m,d] = iso.split('-').map(x=>parseInt(x,10));
-  return hariNama[new Date(y,m-1,d).getDay()]
-}
-function showPopup(msg){
-  document.getElementById('popup-message').innerHTML = msg;
-  document.getElementById('popup').style.display = 'flex'
-}
-function closePopup(){ document.getElementById('popup').style.display = 'none' }
+function displayDateFromISO(iso){ const [y,m,d]=iso.split('-').map(x=>parseInt(x,10)); return `${d} ${bulanNama[m-1]} ${y}` }
+function dayNameFromISO(iso){ const [y,m,d]=iso.split('-').map(x=>parseInt(x,10)); return hariNama[new Date(y,m-1,d).getDay()] }
+function showPopup(msg){ document.getElementById('popup-message').innerHTML=msg; document.getElementById('popup').style.display='flex' }
+function closePopup(){ document.getElementById('popup').style.display='none' }
 
 /* ---------- camera ---------- */
 async function startCamera(){
-  const video = document.getElementById('camera');
-  // iOS/Android kadang butuh atribut ini via JS juga
-  video.setAttribute('autoplay','');
-  video.setAttribute('muted','');
-  video.setAttribute('playsinline','');
-
-  // Wajib HTTPS (atau localhost) untuk getUserMedia
-  const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  if(!isSecure){
-    showPopup('Akses kamera membutuhkan HTTPS atau localhost. Buka halaman ini dengan https:// atau jalankan di localhost.');
-    return;
-  }
-
-  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
-    showPopup('Browser tidak mendukung kamera.');
-    return;
-  }
-
-  // Matikan kamera sebelumnya jika ada
+  const video=document.getElementById('camera');
+  video.setAttribute('autoplay',''); video.setAttribute('muted',''); video.setAttribute('playsinline','');
+  const isSecure = location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+  if(!isSecure){ showPopup('Akses kamera membutuhkan HTTPS atau localhost.'); return }
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ showPopup('Browser tidak mendukung kamera.'); return }
   stopCamera();
-
-  // Beberapa device gagal jika "user" dipaksa. Coba ideal user, lalu fallback environment.
-  const tries = [
-    { video: { facingMode: { ideal: 'user' } } },
-    { video: { facingMode: { ideal: 'environment' } } },
-    { video: true }
-  ];
-
-  let lastErr = null;
-  for (const constraints of tries){
+  const tries=[ {video:{facingMode:{ideal:'user'}}}, {video:{facingMode:{ideal:'environment'}}}, {video:true} ];
+  let lastErr=null;
+  for (const c of tries){
     try{
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      await new Promise(res => {
-        if (video.readyState >= 2) return res();
-        video.onloadedmetadata = () => res();
-      });
-      // Sukses: keluar fungsi
+      const stream=await navigator.mediaDevices.getUserMedia(c);
+      video.srcObject=stream;
+      await new Promise(res=>{ if(video.readyState>=2) return res(); video.onloadedmetadata=()=>res(); });
       return;
-    }catch(err){
-      lastErr = err;
-    }
+    }catch(err){ lastErr=err }
   }
-
-  // Jika semua gagal, tampilkan error yang lebih informatif
-  let reason = 'Tidak diketahui';
-  if(lastErr){
-    // Beberapa error umum: NotAllowedError, NotFoundError, NotReadableError, OverconstrainedError
-    reason = `${lastErr.name || 'Error'}: ${lastErr.message || ''}`;
-    if(lastErr.name === 'NotAllowedError'){
-      reason += '<br>• Izin kamera ditolak. Buka Pengaturan browser → Site settings → izinkan kamera.';
-    } else if(lastErr.name === 'NotFoundError'){
-      reason += '<br>• Perangkat kamera tidak ditemukan atau sedang digunakan aplikasi lain.';
-    } else if(lastErr.name === 'NotReadableError'){
-      reason += '<br>• Kamera sedang dipakai aplikasi lain. Tutup aplikasi kamera/WA/IG, lalu coba lagi.';
-    } else if(lastErr.name === 'OverconstrainedError'){
-      reason += '<br>• Konfigurasi kamera tidak cocok. Kami sudah coba fallback otomatis.';
-    }
-  }
-  showPopup('Kamera tidak bisa diakses: ' + reason);
+  let reason = lastErr? `${lastErr.name||'Error'}: ${lastErr.message||''}` : 'Tidak diketahui';
+  if(lastErr && lastErr.name==='NotAllowedError') reason += '<br>• Izin kamera ditolak. Izinkan di pengaturan situs.';
+  showPopup('Kamera tidak bisa diakses: '+reason);
 }
-function stopCamera(){
-  const video = document.getElementById('camera');
-  const stream = video.srcObject;
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); video.srcObject=null }
-}
+function stopCamera(){ const video=document.getElementById('camera'); const stream=video.srcObject; if(stream){ stream.getTracks().forEach(t=>t.stop()); video.srcObject=null } }
 window.addEventListener('beforeunload', stopCamera);
 
 /* ---------- auth ---------- */
 async function login(){
-  const user = document.getElementById('username').value.trim();
-  const pass = document.getElementById('password').value.trim();
-  const found = guruAkun.find(g => g.username === user && g.password === pass);
+  const user=document.getElementById('username').value.trim();
+  const pass=document.getElementById('password').value.trim();
+  const found=guruAkun.find(g=>g.username===user && g.password===pass);
   if(!found){ showPopup('Login gagal! Username atau password salah.'); return }
-  // buka DB & migrasi data lama
-  if(!db) await openDB();
-  await migrateFromLocalStorage();
-
-  guruAktif = user;
-  document.getElementById('welcome').style.display = 'none';
-  document.getElementById('absensi').style.display = 'block';
-  document.getElementById('guruInfo').textContent = `Guru aktif: ${guruAktif}`;
-  startCamera();
-  const currentMonth = new Date().getMonth().toString();
-  document.getElementById('bulanSelect').value = currentMonth;
+  try{ if(!db) await openDB(); await migrateFromLocalStorage(); }catch(e){ console.warn('IndexedDB warning:', e); }
+  guruAktif=user;
+  document.getElementById('welcome').style.display='none';
+  document.getElementById('absensi').style.display='block';
+  document.getElementById('guruInfo').textContent=`Guru aktif: ${guruAktif}`;
+  try{ startCamera(); }catch(_){}
+  const currentMonth=new Date().getMonth().toString();
+  document.getElementById('bulanSelect').value=currentMonth;
   bulanDipilih();
 }
 function logout(){
-  stopCamera();
-  guruAktif = null;
-  document.getElementById('welcome').style.display = 'block';
-  document.getElementById('absensi').style.display = 'none';
-  document.getElementById('username').value = '';
-  document.getElementById('password').value = '';
+  stopCamera(); guruAktif=null;
+  document.getElementById('welcome').style.display='block';
+  document.getElementById('absensi').style.display='none';
+  document.getElementById('username').value=''; document.getElementById('password').value='';
 }
 
 /* ---------- bulan selection ---------- */
 function bulanDipilih(){
-  const val = document.getElementById('bulanSelect').value;
-  const enable = (val !== '');
-  // Print & Hapus data aktif untuk bulan apapun yang dipilih
-  document.getElementById('btnPrint').disabled = !enable;
-  document.getElementById('btnClearMonth').disabled = !enable;
-  // Absen hanya jika bulan terpilih == bulan berjalan
-  const currentMonth = new Date().getMonth().toString();
-  document.getElementById('btnAbsen').disabled = !(enable && val === currentMonth);
+  const val=document.getElementById('bulanSelect').value;
+  const enable=(val!=='');
+  document.getElementById('btnPrint').disabled=!enable;
+  document.getElementById('btnClearMonth').disabled=!enable;
+  document.getElementById('btnExport').disabled=!enable;
+  const importFile=document.getElementById('importFile');
+  const importLabel=document.getElementById('importLabel');
+  importFile.disabled=!enable; if(enable) importLabel.classList.remove('disabled'); else importLabel.classList.add('disabled');
+  const currentMonth=new Date().getMonth().toString();
+  document.getElementById('btnAbsen').disabled=!(enable && val===currentMonth);
   tampilkanRekap();
 }
 
 /* ---------- absen ---------- */
 function absen(){
   if(!guruAktif){ return showPopup('Silakan login terlebih dahulu.') }
-  const selected = document.getElementById('bulanSelect').value;
-  if(selected === ''){ return showPopup('Silakan pilih bulan terlebih dahulu.') }
-  const currentMonth = new Date().getMonth().toString();
-  if(selected !== currentMonth){
-    return showPopup(`Bulan terpilih tidak sama dengan bulan berjalan (${bulanNama[currentMonth]}). Silakan pilih ${bulanNama[currentMonth]} untuk absen.`)
-  }
+  const selected=document.getElementById('bulanSelect').value;
+  if(selected===''){ return showPopup('Silakan pilih bulan terlebih dahulu.') }
+  const currentMonth=new Date().getMonth().toString();
+  if(selected!==currentMonth){ return showPopup(`Bulan terpilih tidak sama dengan bulan berjalan (${bulanNama[currentMonth]}). Silakan pilih ${bulanNama[currentMonth]}.`) }
   captureAndSave(currentMonth);
 }
 
 async function captureAndSave(bulanVal){
-  const video = document.getElementById('camera');
-  const TARGET_W = 640; // lebih besar karena sekarang pakai IndexedDB
-  const vw = video.videoWidth || 640; const vh = video.videoHeight || 480;
-  const scale = Math.min(1, TARGET_W / vw);
-  const w = Math.round(vw * scale); const h = Math.round(vh * scale);
+  const video=document.getElementById('camera');
+  const TARGET_W=640, vw=video.videoWidth||640, vh=video.videoHeight||480;
+  const scale=Math.min(1, TARGET_W/vw), w=Math.round(vw*scale), h=Math.round(vh*scale);
+  const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+  const ctx=canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);
 
-  const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, w, h);
+  // waktu sekarang (sekali saja)
+  const now=new Date();
+  const iso=isoFromDate(now);
+  const jam=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const tahun=now.getFullYear();
 
-  const fotoBlob = await new Promise(res=> canvas.toBlob(res, 'image/jpeg', 0.75));
+  // watermark
+  const barH=44, pad=8;
+  ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,h-barH,w,barH);
+  ctx.fillStyle='#fff'; ctx.font='bold 14px Poppins, Arial'; ctx.textBaseline='middle';
+  ctx.fillText(`Guru: ${guruAktif}`, pad, h-barH/2-8);
+  ctx.font='12px Poppins, Arial'; ctx.fillText(`${iso} ${jam}`, pad, h-barH/2+10);
 
-  const now = new Date();
-  const iso = isoFromDate(now);
-  const jam = now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  const tahun = now.getFullYear();
+  const fotoBlob = await new Promise(res=> canvas.toBlob(res,'image/jpeg',0.8));
 
-  // Cek apakah sudah Datang/Pulang di hari ini (pakai query di bulan yang sama)
-  const existing = await idbGetMonth(guruAktif, Number(bulanVal), tahun);
-  const sudahDatang = existing.find(r=>r.isoDate===iso && r.jenis==='Datang');
-  const sudahPulang = existing.find(r=>r.isoDate===iso && r.jenis==='Pulang');
+  // cek status datang/pulang
+  const existing=await idbGetMonth(guruAktif, Number(bulanVal), tahun);
+  const sudahDatang=existing.find(r=>r.isoDate===iso && r.jenis==='Datang');
+  const sudahPulang=existing.find(r=>r.isoDate===iso && r.jenis==='Pulang');
+  let jenis=''; if(!sudahDatang) jenis='Datang'; else if(!sudahPulang) jenis='Pulang'; else return showPopup('Anda sudah absen Datang & Pulang hari ini.');
 
-  let jenis='';
-  if(!sudahDatang) jenis='Datang';
-  else if(!sudahPulang) jenis='Pulang';
-  else { return showPopup('Anda sudah absen Datang & Pulang hari ini.') }
+  const ua=navigator.userAgent||'unknown';
+  const checksum=await sha256(`${guruAktif}|${iso}|${jam}|${ua}`);
+  const rec={ guru:guruAktif, isoDate:iso, displayDate:displayDateFromISO(iso), dayName:dayNameFromISO(iso), jam, status:'Hadir', jenis, foto:fotoBlob, month:Number(bulanVal), year:tahun, ua, checksum };
 
-  const rec={ guru:guruAktif, isoDate:iso, displayDate:displayDateFromISO(iso), dayName:dayNameFromISO(iso), jam, status:'Hadir', jenis, foto:fotoBlob, month:Number(bulanVal), year:tahun };
-
-  try{
-    await idbAdd(rec);
-  }catch(e){
-    return showPopup('Gagal menyimpan ke IndexedDB: ' + (e?.message||e));
-  }
-
+  try{ await idbAdd(rec) }catch(e){ return showPopup('Gagal menyimpan ke IndexedDB: '+(e?.message||e)) }
   document.getElementById('status').innerText=`Status: Hadir (${jenis})`;
   showPopup(`✅ Absen ${jenis} berhasil!`);
   await tampilkanRekap();
 }
 
-/* ---------- tampil rekap (digabung per tanggal) ---------- */
+/* ---------- tampil rekap ---------- */
 async function tampilkanRekap(){
-  const bulanVal = document.getElementById('bulanSelect').value;
-  if(!guruAktif || bulanVal===''){
-    document.getElementById('rekap').innerHTML='';
-    document.getElementById('stats').innerText='';
-    return;
-  }
-  const tahun=new Date().getFullYear();
-  const monthIdx=Number(bulanVal);
-  const filtered = await idbGetMonth(guruAktif, monthIdx, tahun);
+  const bulanVal=document.getElementById('bulanSelect').value;
+  if(!guruAktif||bulanVal===''){ document.getElementById('rekap').innerHTML=''; document.getElementById('stats').innerText=''; return }
+  const tahun=new Date().getFullYear(), monthIdx=Number(bulanVal);
+  const filtered=await idbGetMonth(guruAktif, monthIdx, tahun);
+  if(filtered.length===0){ document.getElementById('rekap').innerHTML=''; document.getElementById('stats').innerText='Belum ada data untuk bulan ini.'; return }
 
-  if(filtered.length===0){
-    document.getElementById('rekap').innerHTML='';
-    document.getElementById('stats').innerText='Belum ada data untuk bulan ini.';
-    return;
-  }
-
-  // Gabungkan per tanggal
-  const byDate = {};
+  const byDate={};
   filtered.forEach(r=>{
-    if(!byDate[r.isoDate]) byDate[r.isoDate] = {dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
-    if(r.jenis==='Datang') byDate[r.isoDate].datang = {jam:r.jam,foto:r.foto};
-    if(r.jenis==='Pulang') byDate[r.isoDate].pulang = {jam:r.jam,foto:r.foto};
+    if(!byDate[r.isoDate]) byDate[r.isoDate]={dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
+    if(r.jenis==='Datang') byDate[r.isoDate].datang={jam:r.jam,foto:r.foto};
+    if(r.jenis==='Pulang') byDate[r.isoDate].pulang={jam:r.jam,foto:r.foto};
   });
 
-  const dates = Object.keys(byDate).sort();
-  let html=`<h3 style=\"margin:8px 0 6px 0;color:#fff\">Rekap Bulan ${bulanNama[monthIdx]} ${tahun}</h3>`;
-  html+=`<table><thead><tr>
-    <th>Hari</th><th>Tanggal</th>
-    <th>Datang</th><th>Foto Datang</th>
-    <th>Pulang</th><th>Foto Pulang</th>
-  </tr></thead><tbody>`;
-
+  const dates=Object.keys(byDate).sort();
+  let html=`<h3 style="margin:8px 0 6px 0;color:#fff">Rekap Bulan ${bulanNama[monthIdx]} ${tahun}</h3>`;
+  html+=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Datang</th><th>Foto Datang</th><th>Pulang</th><th>Foto Pulang</th></tr></thead><tbody>`;
   dates.forEach(d=>{
-    const row = byDate[d];
-    const datangJam = row.datang? row.datang.jam : '-';
-    const pulangJam = row.pulang? row.pulang.jam : '-';
-    const datangImg = row.datang? `<img src="${URL.createObjectURL(row.datang.foto)}" width="50" style="border-radius:6px;"/>` : '-';
-    const pulangImg = row.pulang? `<img src="${URL.createObjectURL(row.pulang.foto)}" width="50" style="border-radius:6px;"/>` : '-';
+    const row=byDate[d];
+    const datangJam=row.datang?row.datang.jam:'-';
+    const pulangJam=row.pulang?row.pulang.jam:'-';
+    const datangImg=row.datang?`<img src="${URL.createObjectURL(row.datang.foto)}" width="50" style="border-radius:6px;"/>`:'-';
+    const pulangImg=row.pulang?`<img src="${URL.createObjectURL(row.pulang.foto)}" width="50" style="border-radius:6px;"/>`:'-';
     html+=`<tr><td>${row.dayName}</td><td>${row.displayDate}</td><td>${datangJam}</td><td>${datangImg}</td><td>${pulangJam}</td><td>${pulangImg}</td></tr>`;
   });
   html+=`</tbody></table>`;
@@ -414,41 +280,76 @@ async function tampilkanRekap(){
   document.getElementById('stats').innerText=`Total hari tercatat: ${dates.length} | Datang: ${totalDatang} | Pulang: ${totalPulang}`;
 }
 
-/* ---------- hapus data bulan terpilih ---------- */
+/* ---------- Hapus / Ekspor / Impor / Privasi ---------- */
 async function hapusDataBulanIni(){
   if(!guruAktif) return showPopup('Silakan login dulu.');
   const bulanVal=document.getElementById('bulanSelect').value;
   if(bulanVal==='') return showPopup('Pilih bulan dulu.');
   const tahun=new Date().getFullYear();
   const monthIdx=Number(bulanVal);
+  const ok = confirm(`Yakin menghapus SEMUA data bulan ${bulanNama[monthIdx]} ${tahun} untuk ${guruAktif}?\nTindakan ini tidak dapat dibatalkan.`);
+  if(!ok) return;
   await idbDeleteMonth(guruAktif, monthIdx, tahun);
   showPopup('Data bulan terpilih telah dihapus.');
   await tampilkanRekap();
 }
 
+async function exportBulan(){
+  if(!guruAktif) return showPopup('Silakan login dulu.');
+  const bulanVal=document.getElementById('bulanSelect').value; if(bulanVal==='') return showPopup('Pilih bulan dulu.');
+  const tahun=new Date().getFullYear(), monthIdx=Number(bulanVal);
+  const rows=await idbGetMonth(guruAktif, monthIdx, tahun);
+  if(!rows.length) return showPopup('Tidak ada data untuk diekspor.');
+  const out=[]; for(const r of rows){ const foto64=r.foto? await blobToDataURL(r.foto):null; out.push({...r, foto:foto64}) }
+  const data={ meta:{app:'Absensi MDTA', version:1, guru:guruAktif, month:monthIdx, year:tahun, exported_at:new Date().toISOString()}, rows: out };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}), url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`absensi_${guruAktif}_${monthIdx+1}-${tahun}.json`; a.click(); URL.revokeObjectURL(url);
+}
+
+async function importBulan(ev){
+  const file=ev.target.files && ev.target.files[0]; if(!file) return;
+  try{
+    const text=await file.text(); const data=JSON.parse(text);
+    if(!data || !Array.isArray(data.rows)) throw new Error('Format tidak valid');
+    for(const r of data.rows){ const fotoBlob=r.foto? dataURLtoBlob(r.foto):null; const rec={...r, foto:fotoBlob}; delete rec.id; await idbAdd(rec); }
+    showPopup('Impor selesai. Data ditambahkan (tidak menimpa).');
+    await tampilkanRekap();
+  }catch(e){ showPopup('Gagal impor: '+(e?.message||e)) }
+  finally{ ev.target.value='' }
+}
+
+function openPrivacy(){ document.getElementById('privacyModal').style.display='flex' }
+function closePrivacy(){ document.getElementById('privacyModal').style.display='none' }
+
+/* ---------- utils ---------- */
+async function sha256(str){ const enc=new TextEncoder().encode(str); const buf=await crypto.subtle.digest('SHA-256',enc); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('') }
+function blobToDataURL(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob) }) }
+function dataURLtoBlob(dataurl){
+  const arr=dataurl.split(','), mime=arr[0].match(/:(.*?);/)[1];
+  const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n);
+  while(n--){ u8[n]=bstr.charCodeAt(n) }
+  return new Blob([u8], {type:mime});
+}
+
 /* ---------- print rekap ---------- */
 async function printRekap(){
-  if(!guruAktif){ return showPopup('Silakan login dulu') }
-  const bulanVal=document.getElementById('bulanSelect').value;
-  if(bulanVal===''){ return showPopup('Pilih bulan dulu') }
-  const tahun=new Date().getFullYear();
-  const monthIdx=Number(bulanVal);
-  const filtered = await idbGetMonth(guruAktif, monthIdx, tahun);
-  if(filtered.length===0){ return showPopup('Tidak ada data untuk dicetak pada bulan ini.') }
+  if(!guruAktif) return showPopup('Silakan login dulu');
+  const bulanVal=document.getElementById('bulanSelect').value; if(bulanVal==='') return showPopup('Pilih bulan dulu');
+  const tahun=new Date().getFullYear(), monthIdx=Number(bulanVal);
+  const filtered=await idbGetMonth(guruAktif, monthIdx, tahun);
+  if(filtered.length===0) return showPopup('Tidak ada data untuk dicetak pada bulan ini.');
 
-  const byDate = {};
-  filtered.forEach(r=>{
-    if(!byDate[r.isoDate]) byDate[r.isoDate] = {dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
-    if(r.jenis==='Datang') byDate[r.isoDate].datang = {jam:r.jam,foto:r.foto};
-    if(r.jenis==='Pulang') byDate[r.isoDate].pulang = {jam:r.jam,foto:r.foto};
+  const byDate={}; filtered.forEach(r=>{ if(!byDate[r.isoDate]) byDate[r.isoDate]={dayName:r.dayName, displayDate:r.displayDate, datang:null, pulang:null};
+    if(r.jenis==='Datang') byDate[r.isoDate].datang={jam:r.jam,foto:r.foto};
+    if(r.jenis==='Pulang') byDate[r.isoDate].pulang={jam:r.jam,foto:r.foto};
   });
-  const dates = Object.keys(byDate).sort();
+  const dates=Object.keys(byDate).sort();
 
   const w=window.open('','_blank','width=900,height=700');
   const style=`<style>body{font-family:Arial,sans-serif;color:#000;margin:20px}h2{margin-bottom:6px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #444;padding:6px;font-size:13px;text-align:center}th{background:#eee}img{border-radius:6px}</style>`;
   let table=`<h2>Rekap Absensi Guru ${guruAktif} - ${bulanNama[monthIdx]} ${tahun}</h2>`;
   table+=`<table><thead><tr><th>Hari</th><th>Tanggal</th><th>Datang</th><th>Foto Datang</th><th>Pulang</th><th>Foto Pulang</th></tr></thead><tbody>`;
-  dates.forEach(d=>{
+  for(const d of dates){
     const row=byDate[d];
     const datangJam=row.datang?row.datang.jam:'-';
     const pulangJam=row.pulang?row.pulang.jam:'-';
@@ -457,11 +358,26 @@ async function printRekap(){
     const datangImg=datangUrl?`<img src="${datangUrl}" width="60">`:'-';
     const pulangImg=pulangUrl?`<img src="${pulangUrl}" width="60">`:'-';
     table+=`<tr><td>${row.dayName}</td><td>${row.displayDate}</td><td>${datangJam}</td><td>${datangImg}</td><td>${pulangJam}</td><td>${pulangImg}</td></tr>`;
-  });
+  }
   table+=`</tbody></table>`;
-  w.document.write(`<!doctype html><html><head><meta charset=\"utf-8\"><title>Rekap ${guruAktif}</title>${style}</head><body>${table}</body></html>`);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rekap ${guruAktif}</title>${style}</head><body>${table}</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),500);
 }
 </script>
+
+<!-- Privacy Modal -->
+<div id="privacyModal" class="popup">
+  <div class="box" style="text-align:left">
+    <h3 style="margin-top:0;text-align:center">Kebijakan Privasi Ringkas</h3>
+    <ul style="padding-left:16px; line-height:1.4">
+      <li>Data disimpan <b>lokal</b> di perangkat (IndexedDB). Tidak terkirim ke cloud.</li>
+      <li>Data yang dikumpulkan: nama guru (login), tanggal & waktu absen, foto selfie (dengan watermark), info perangkat (user-agent), checksum.</li>
+      <li>Disarankan retensi foto 6–12 bulan. Admin dapat menghapus data bulan tertentu.</li>
+      <li>Dengan menekan "Ambil Absen", Anda menyetujui pengambilan foto untuk keperluan absensi.</li>
+    </ul>
+    <div style="text-align:center"><button onclick="closePrivacy()">Tutup</button></div>
+  </div>
+</div>
+
 </body>
 </html>
